@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Runbooks and mock data are read at runtime from the output directory. -->
+    <!-- Settings, runbooks and mock data are read at runtime from the output directory. -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Knowledge\**\*.md" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Data\*.json" CopyToOutputDirectory="PreserveNewest" />
     <!-- Conversation memory is runtime state, never shipped with the build. -->
