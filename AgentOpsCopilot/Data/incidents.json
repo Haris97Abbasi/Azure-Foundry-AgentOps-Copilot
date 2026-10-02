@@ -1,0 +1,34 @@
+[
+  {
+    "id": "INC-2041",
+    "service": "Checkout API",
+    "severity": "SEV2",
+    "symptoms": "HTTP 500 rate on POST /checkout rose from 0.2% to 18%. Error logs show PaymentGatewayClient TimeoutException after 5s.",
+    "startTime": "2026-10-02T09:12:00Z",
+    "status": "Active"
+  },
+  {
+    "id": "INC-2038",
+    "service": "Orders Database",
+    "severity": "SEV3",
+    "symptoms": "p95 query latency 1.8s (baseline 120ms). Intermittent 'timeout waiting for connection from pool' warnings from clients.",
+    "startTime": "2026-10-02T09:20:00Z",
+    "status": "Active"
+  },
+  {
+    "id": "INC-2035",
+    "service": "Notification Service",
+    "severity": "SEV4",
+    "symptoms": "Order confirmation emails delayed by up to 10 minutes. No message loss observed.",
+    "startTime": "2026-10-01T16:20:00Z",
+    "status": "Active"
+  },
+  {
+    "id": "INC-2029",
+    "service": "Checkout API",
+    "severity": "SEV3",
+    "symptoms": "Currency rounding errors on EUR orders.",
+    "startTime": "2026-09-28T11:05:00Z",
+    "status": "Resolved"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "CHG-5512",
+    "service": "Checkout API",
+    "type": "Deployment",
+    "description": "Release v2.14.0: upgraded PaymentGatewayClient SDK 3.8 -> 4.0 and reduced its HTTP timeout from 30s to 5s.",
+    "version": "2.14.0",
+    "author": "payments-team",
+    "deployedAt": "2026-10-02T08:55:00Z"
+  },
+  {
+    "id": "CHG-5513",
+    "service": "Checkout API",
+    "type": "Configuration",
+    "description": "Lowered database connection pool max size from 100 to 40.",
+    "version": "config-r87",
+    "author": "payments-team",
+    "deployedAt": "2026-10-02T09:05:00Z"
+  },
+  {
+    "id": "CHG-5498",
+    "service": "Checkout API",
+    "type": "Deployment",
+    "description": "Release v2.13.2: fixed currency rounding on EUR orders.",
+    "version": "2.13.2",
+    "author": "payments-team",
+    "deployedAt": "2026-09-29T10:30:00Z"
+  },
+  {
+    "id": "CHG-5507",
+    "service": "Orders Database",
+    "type": "Configuration",
+    "description": "Enabled slow-query logging (threshold 500ms).",
+    "version": "db-config-r12",
+    "author": "data-platform-team",
+    "deployedAt": "2026-10-01T18:00:00Z"
+  },
+  {
+    "id": "CHG-5509",
+    "service": "Notification Service",
+    "type": "Deployment",
+    "description": "Release v1.8.0: switched email provider SDK to batch sending.",
+    "version": "1.8.0",
+    "author": "messaging-team",
+    "deployedAt": "2026-10-01T15:45:00Z"
+  }
+]
