@@ -2,8 +2,6 @@ namespace AgentOpsCopilot.Tools;
 
 public sealed record ToolCall(string Tool, string Arguments, IReadOnlyList<string> ReturnedSources);
 
-// Records what each tool actually returned during one turn, so the grounding guardrail
-// can reject sources the model cites but never received.
 public sealed class EvidenceLedger
 {
     private readonly List<ToolCall> _calls = [];
