@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using AgentOpsCopilot.Models;
 
@@ -5,7 +6,7 @@ namespace AgentOpsCopilot.Tools;
 
 public sealed class MockData
 {
-    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private static readonly TimeSpan NewestRecordAge = TimeSpan.FromMinutes(30);
 

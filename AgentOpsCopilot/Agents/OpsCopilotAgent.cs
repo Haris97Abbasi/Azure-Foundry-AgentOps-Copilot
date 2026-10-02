@@ -1,6 +1,7 @@
 using System.ClientModel;
 using System.Text.Json;
 using AgentOpsCopilot.Guardrails;
+using AgentOpsCopilot.Memory;
 using AgentOpsCopilot.Models;
 using AgentOpsCopilot.Services;
 using AgentOpsCopilot.Tools;
@@ -51,23 +52,22 @@ public sealed class OpsCopilotAgent
     private readonly SafetyValidator _safety;
     private readonly IList<AITool> _tools;
     private readonly TimeProvider _clock;
-    private readonly int _maxHistoryMessages;
-    private readonly List<ChatMessage> _history = [];
+    private readonly JsonConversationStore _memory;
 
     public OpsCopilotAgent(
         IAgentService model,
         EvidenceLedger ledger,
         SafetyValidator safety,
+        JsonConversationStore memory,
         IncidentTools incidents,
         ChangeTools changes,
         RunbookSearchTool runbooks,
-        int maxHistoryMessages = 10,
         TimeProvider? clock = null)
     {
         _model = model;
         _ledger = ledger;
         _safety = safety;
-        _maxHistoryMessages = maxHistoryMessages;
+        _memory = memory;
         _clock = clock ?? TimeProvider.System;
         _tools =
         [
@@ -77,7 +77,7 @@ public sealed class OpsCopilotAgent
         ];
     }
 
-    public IReadOnlyList<ChatMessage> History => _history;
+    public IReadOnlyList<ChatMessage> History => _memory.Messages;
 
     public async Task<AgentTurn> AskAsync(string question, CancellationToken cancellationToken = default)
     {
@@ -94,7 +94,7 @@ public sealed class OpsCopilotAgent
         List<ChatMessage> messages =
         [
             new(ChatRole.System, Instructions.Replace("{now}", _clock.GetUtcNow().ToString("yyyy-MM-dd HH:mm 'UTC'"))),
-            .. _history,
+            .. _memory.Messages,
             new(ChatRole.User, question)
         ];
 
@@ -115,7 +115,7 @@ public sealed class OpsCopilotAgent
         var structured = analysis is not null;
         analysis ??= Unstructured(answer);
 
-        var earlierAnswers = _history.Where(m => m.Role == ChatRole.Assistant).Select(m => m.Text);
+        var earlierAnswers = _memory.Messages.Where(m => m.Role == ChatRole.Assistant).Select(m => m.Text);
         var validated = _safety.ValidateOutput(analysis, _ledger.Sources, earlierAnswers);
 
         Remember(question, validated.Analysis);
@@ -167,12 +167,6 @@ public sealed class OpsCopilotAgent
         Sources: [],
         NeedsHumanEscalation: true);
 
-    private void Remember(string question, OpsAnalysis analysis)
-    {
-        _history.Add(new ChatMessage(ChatRole.User, question));
-        _history.Add(new ChatMessage(ChatRole.Assistant, JsonSerializer.Serialize(analysis, MockData.Json)));
-
-        var excess = _history.Count - _maxHistoryMessages;
-        if (excess > 0) _history.RemoveRange(0, excess);
-    }
+    private void Remember(string question, OpsAnalysis analysis) =>
+        _memory.AddExchange(question, JsonSerializer.Serialize(analysis, MockData.Json));
 }
