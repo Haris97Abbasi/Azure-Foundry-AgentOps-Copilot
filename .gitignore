@@ -399,3 +399,13 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# AgentOps Copilot: local secrets and runtime state
+appsettings.Development.json
+**/Data/session.json
+**/Data/session.json.tmp
+
+# Local planning documents (not part of the published code)
+/plan.md
+/Foundry_AgentOps_Copilot_1Hour_Claude_Code_Brief.pdf
+/AgentOps_Architecture_No_Cutoff.pdf
