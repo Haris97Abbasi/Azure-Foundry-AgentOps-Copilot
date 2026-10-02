@@ -1,4 +1,6 @@
+using System.ClientModel;
 using System.Text.Json;
+using AgentOpsCopilot.Guardrails;
 using AgentOpsCopilot.Models;
 using AgentOpsCopilot.Services;
 using AgentOpsCopilot.Tools;
@@ -6,7 +8,7 @@ using Microsoft.Extensions.AI;
 
 namespace AgentOpsCopilot.Agents;
 
-public sealed record AgentTurn(OpsAnalysis Analysis, IReadOnlyList<ToolCall> ToolCalls, bool Structured);
+public sealed record AgentTurn(OpsAnalysis Analysis, IReadOnlyList<ToolCall> ToolCalls, bool Structured, IReadOnlyList<string> GuardrailNotes);
 
 public sealed class OpsCopilotAgent
 {
@@ -46,6 +48,7 @@ public sealed class OpsCopilotAgent
 
     private readonly IAgentService _model;
     private readonly EvidenceLedger _ledger;
+    private readonly SafetyValidator _safety;
     private readonly IList<AITool> _tools;
     private readonly TimeProvider _clock;
     private readonly int _maxHistoryMessages;
@@ -54,6 +57,7 @@ public sealed class OpsCopilotAgent
     public OpsCopilotAgent(
         IAgentService model,
         EvidenceLedger ledger,
+        SafetyValidator safety,
         IncidentTools incidents,
         ChangeTools changes,
         RunbookSearchTool runbooks,
@@ -62,6 +66,7 @@ public sealed class OpsCopilotAgent
     {
         _model = model;
         _ledger = ledger;
+        _safety = safety;
         _maxHistoryMessages = maxHistoryMessages;
         _clock = clock ?? TimeProvider.System;
         _tools =
@@ -78,6 +83,14 @@ public sealed class OpsCopilotAgent
     {
         _ledger.Clear();
 
+        var blockedReason = _safety.CheckInput(question);
+        if (blockedReason is not null)
+        {
+            var refusal = _safety.Refusal(blockedReason);
+            Remember(question, refusal);
+            return new AgentTurn(refusal, [], true, [$"Input blocked by application guardrail: {blockedReason}."]);
+        }
+
         List<ChatMessage> messages =
         [
             new(ChatRole.System, Instructions.Replace("{now}", _clock.GetUtcNow().ToString("yyyy-MM-dd HH:mm 'UTC'"))),
@@ -85,15 +98,28 @@ public sealed class OpsCopilotAgent
             new(ChatRole.User, question)
         ];
 
-        var response = await _model.CompleteAsync(messages, new ChatOptions { Tools = _tools, ToolMode = ChatToolMode.Auto }, cancellationToken);
-        var answer = response.Messages.LastOrDefault(m => m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text))?.Text ?? "";
+        string answer;
+        try
+        {
+            var response = await _model.CompleteAsync(messages, new ChatOptions { Tools = _tools, ToolMode = ChatToolMode.Auto }, cancellationToken);
+            answer = response.Messages.LastOrDefault(m => m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text))?.Text ?? "";
+        }
+        catch (ClientResultException ex) when (SafetyValidator.IsContentFilterBlock(ex))
+        {
+            var filtered = _safety.ContentFilterRefusal();
+            Remember(question, filtered);
+            return new AgentTurn(filtered, _ledger.Calls, true, ["Blocked by the Foundry DefaultV2 content filter."]);
+        }
 
         var analysis = TryParse(answer) ?? await ReformatAsync(answer, cancellationToken);
         var structured = analysis is not null;
         analysis ??= Unstructured(answer);
 
-        Remember(question, analysis);
-        return new AgentTurn(analysis, _ledger.Calls, structured);
+        var earlierAnswers = _history.Where(m => m.Role == ChatRole.Assistant).Select(m => m.Text);
+        var validated = _safety.ValidateOutput(analysis, _ledger.Sources, earlierAnswers);
+
+        Remember(question, validated.Analysis);
+        return new AgentTurn(validated.Analysis, _ledger.Calls, structured, validated.Notes);
     }
 
     private async Task<OpsAnalysis?> ReformatAsync(string answer, CancellationToken cancellationToken)
